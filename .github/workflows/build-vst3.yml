@@ -29,15 +29,11 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/Signalsmith-Audio/linear.git linear-dependency
           New-Item -ItemType Directory -Force -Path "Source/signalsmith-linear" | Out-Null
-          $linearHeaderRoot = "linear-dependency/include/signalsmith-linear"
-          if (Test-Path $linearHeaderRoot) {
-            Copy-Item -Path "$linearHeaderRoot/*" -Destination "Source/signalsmith-linear/" -Recurse -Force
-          } else {
-            throw "No se encontró la carpeta include/signalsmith-linear en Signalsmith Linear."
-          }
+          Get-ChildItem "linear-dependency" -Filter "*.h" -File | Copy-Item -Destination "Source/signalsmith-linear" -Force
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Signalsmith-Audio/signalsmith-stretch/main/signalsmith-stretch.h" -OutFile "Source/signalsmith-stretch.h"
           if (!(Test-Path "Source/signalsmith-stretch.h")) { throw "No se descargó signalsmith-stretch.h" }
           if (!(Test-Path "Source/signalsmith-linear/stft.h")) { throw "No se descargó Signalsmith Linear stft.h" }
+          if (!(Test-Path "Source/signalsmith-linear/fft.h")) { throw "No se descargó Signalsmith Linear fft.h" }
 
       - name: Configure project
         shell: pwsh
