@@ -1,0 +1,55 @@
+name: Build TitanTune Metal VST3
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "**"
+
+jobs:
+  build-windows-vst3:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Ninja
+        shell: pwsh
+        run: choco install ninja --no-progress -y
+
+      - name: Fetch Signalsmith dependencies
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://github.com/Signalsmith-Audio/linear.git linear-dependency
+          New-Item -ItemType Directory -Force -Path "Source/signalsmith-linear" | Out-Null
+          $linearHeaderRoot = "linear-dependency/include/signalsmith-linear"
+          if (Test-Path $linearHeaderRoot) {
+            Copy-Item -Path "$linearHeaderRoot/*" -Destination "Source/signalsmith-linear/" -Recurse -Force
+          } else {
+            throw "No se encontró la carpeta include/signalsmith-linear en Signalsmith Linear."
+          }
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Signalsmith-Audio/signalsmith-stretch/main/signalsmith-stretch.h" -OutFile "Source/signalsmith-stretch.h"
+          if (!(Test-Path "Source/signalsmith-stretch.h")) { throw "No se descargó signalsmith-stretch.h" }
+          if (!(Test-Path "Source/signalsmith-linear/stft.h")) { throw "No se descargó Signalsmith Linear stft.h" }
+
+      - name: Configure project
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build VST3
+        shell: pwsh
+        run: cmake --build build --config Release --target TitanTuneMetal_VST3
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TitanTune-Metal-Windows-VST3
+          path: build/TitanTuneMetal_artefacts/Release/VST3/**
+          if-no-files-found: error
